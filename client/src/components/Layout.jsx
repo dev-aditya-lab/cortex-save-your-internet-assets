@@ -24,10 +24,10 @@ export default function Layout({ children }) {
           <NavLink to="/graph" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <HiOutlineShare /> Knowledge Graph
           </NavLink>
-          <div style={{ borderTop: '1px solid #e2e5e9', margin: '8px 0' }}></div>
+          {/* <div style={{ borderTop: '1px solid #e2e5e9', margin: '8px 0' }}></div>
           <NavLink to="/debug" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
             <HiOutlineChip /> Debug Mode
-          </NavLink>
+          </NavLink> */}
         </nav>
 
         {/* User info + Logout */}

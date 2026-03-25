@@ -32,7 +32,7 @@ function AppContent() {
         <Route path="/search" element={<Search />} />
         <Route path="/collections" element={<Collections />} />
         <Route path="/graph" element={<Graph />} />
-        {/* <Route path="/debug" element={<Debug />} /> */}
+        <Route path="/debug" element={<Debug />} />
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

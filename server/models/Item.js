@@ -8,6 +8,7 @@ const highlightSchema = new mongoose.Schema({
 });
 
 const itemSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   url: { type: String, default: '' },
   type: {
     type: String,

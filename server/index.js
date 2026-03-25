@@ -13,7 +13,10 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
+// Auth routes (no middleware needed)
+app.use('/api/auth', require('./routes/auth'));
+
+// Protected routes (auth middleware applied inside each route file)
 app.use('/api/items', require('./routes/items'));
 app.use('/api/collections', require('./routes/collections'));
 app.use('/api/search', require('./routes/search'));
@@ -30,11 +33,8 @@ app.get('/api/health', (req, res) => {
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
-
-    // Preload the embedding model in background
     console.log('Preloading embedding model...');
     preloadModel();
-
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });

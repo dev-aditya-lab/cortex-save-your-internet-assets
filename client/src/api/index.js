@@ -5,6 +5,30 @@ const api = axios.create({
   timeout: 30000,
 });
 
+// Attach JWT token to every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('cortex_token');
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Handle 401 responses (expired token)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('cortex_token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ===== Items =====
 export const saveItem = (data) => api.post('/items', data).then(r => r.data);
 export const getItems = (params) => api.get('/items', { params }).then(r => r.data);

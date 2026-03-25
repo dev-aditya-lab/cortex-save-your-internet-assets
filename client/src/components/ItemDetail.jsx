@@ -41,10 +41,16 @@ export default function ItemDetail({ itemId, onClose, onDeleted }) {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this item?')) return;
-    await deleteItem(itemId);
-    onDeleted?.();
-    onClose();
+    const confirmed = window.confirm('Are you sure you want to delete this item?');
+    if (!confirmed) return;
+    try {
+      await deleteItem(itemId);
+      onDeleted?.();
+      onClose();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Failed to delete item. Please try again.');
+    }
   };
 
   const handleMoveToCollection = async (colId) => {

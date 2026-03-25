@@ -41,9 +41,15 @@ export default function Collections() {
 
   const handleDelete = async (id, e) => {
     e.stopPropagation();
-    if (!confirm('Delete this collection?')) return;
-    await deleteCollection(id);
-    loadCollections();
+    const confirmed = window.confirm('Are you sure you want to delete this collection?');
+    if (!confirmed) return;
+    try {
+      await deleteCollection(id);
+      loadCollections();
+    } catch (err) {
+      console.error('Delete collection failed:', err);
+      alert('Failed to delete collection.');
+    }
   };
 
   const openCollection = async (col) => {

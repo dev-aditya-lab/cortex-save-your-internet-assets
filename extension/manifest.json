@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Cortex - Save to Knowledge Base",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Save any page to your Cortex knowledge base with one click",
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "storage"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

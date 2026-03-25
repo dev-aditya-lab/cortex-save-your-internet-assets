@@ -11,99 +11,115 @@
       color: #1a1d21;
     }
     .header {
-      padding: 16px;
+      padding: 14px 16px;
       border-bottom: 1px solid #e2e5e9;
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
     }
-    .header .logo {
-      color: #2563eb;
-      font-weight: 700;
-      font-size: 15px;
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .header .logo { color: #2563eb; font-weight: 700; font-size: 15px; }
+    .header .dot { color: #2563eb; font-size: 18px; }
+    .logout-btn {
+      background: none; border: none; color: #dc2626; font-size: 11px;
+      cursor: pointer; padding: 4px 8px; border-radius: 4px;
     }
-    .header .dot {
-      color: #2563eb;
-      font-size: 18px;
-    }
-    .content {
-      padding: 16px;
-    }
+    .logout-btn:hover { background: #fee2e2; }
+    .content { padding: 16px; }
     .url-preview {
-      background: #f8f9fa;
-      border: 1px solid #e2e5e9;
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-size: 12px;
-      color: #646b75;
-      margin-bottom: 14px;
-      word-break: break-all;
-      max-height: 60px;
-      overflow: hidden;
+      background: #f8f9fa; border: 1px solid #e2e5e9; border-radius: 6px;
+      padding: 10px 12px; font-size: 12px; color: #646b75;
+      margin-bottom: 14px; word-break: break-all; max-height: 60px; overflow: hidden;
     }
     .save-btn {
-      width: 100%;
-      padding: 10px;
-      background: #2563eb;
-      color: #ffffff;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s;
+      width: 100%; padding: 10px; background: #2563eb; color: #ffffff;
+      border: none; border-radius: 6px; font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
     }
     .save-btn:hover { background: #1d4ed8; }
-    .save-btn:disabled {
-      background: #93c5fd;
-      cursor: not-allowed;
-    }
+    .save-btn:disabled { background: #93c5fd; cursor: not-allowed; }
     .status {
-      margin-top: 10px;
-      font-size: 12px;
-      text-align: center;
-      padding: 6px;
-      border-radius: 4px;
+      margin-top: 10px; font-size: 12px; text-align: center;
+      padding: 6px; border-radius: 4px; display: none;
     }
     .status.success { background: #dcfce7; color: #15803d; }
     .status.error { background: #fee2e2; color: #b91c1c; }
+
+    /* Login Form */
+    .login-section { padding: 16px; }
+    .login-section h3 { font-size: 13px; margin-bottom: 12px; color: #646b75; text-align: center; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { font-size: 11px; color: #646b75; display: block; margin-bottom: 3px; }
+    .form-group input {
+      width: 100%; padding: 7px 10px; border: 1px solid #e2e5e9;
+      border-radius: 5px; font-size: 12px; color: #1a1d21; outline: none;
+    }
+    .form-group input:focus { border-color: #2563eb; }
+    .login-btn {
+      width: 100%; padding: 9px; background: #2563eb; color: #fff;
+      border: none; border-radius: 6px; font-size: 13px; font-weight: 500;
+      cursor: pointer; margin-top: 4px;
+    }
+    .login-btn:hover { background: #1d4ed8; }
+    .login-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+    .login-error { color: #dc2626; font-size: 11px; margin-top: 6px; text-align: center; }
+    .user-info {
+      font-size: 11px; color: #646b75; text-align: center;
+      padding: 0 16px 6px; border-bottom: 1px solid #e2e5e9; margin-bottom: 0;
+    }
+    .user-info strong { color: #1a1d21; }
+
     .settings {
-      padding: 8px 16px;
-      border-top: 1px solid #e2e5e9;
-      margin-top: 8px;
+      padding: 8px 16px; border-top: 1px solid #e2e5e9; margin-top: 8px;
     }
-    .settings label {
-      font-size: 11px;
-      color: #646b75;
-      display: block;
-      margin-bottom: 4px;
-    }
+    .settings label { font-size: 11px; color: #646b75; display: block; margin-bottom: 4px; }
     .settings input {
-      width: 100%;
-      padding: 6px 8px;
-      border: 1px solid #e2e5e9;
-      border-radius: 4px;
-      font-size: 12px;
-      color: #1a1d21;
-      outline: none;
+      width: 100%; padding: 6px 8px; border: 1px solid #e2e5e9;
+      border-radius: 4px; font-size: 12px; color: #1a1d21; outline: none;
     }
     .settings input:focus { border-color: #2563eb; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div class="header">
-    <span class="dot">◆</span>
-    <span class="logo">Cortex</span>
+    <div class="header-left">
+      <span class="dot">◆</span>
+      <span class="logo">Cortex</span>
+    </div>
+    <button id="logout-btn" class="logout-btn hidden">Sign Out</button>
   </div>
-  <div class="content">
-    <div id="url-preview" class="url-preview">Loading...</div>
-    <button id="save-btn" class="save-btn">Save to Cortex</button>
-    <div id="status" class="status" style="display: none;"></div>
+
+  <!-- Login View -->
+  <div id="login-view" class="login-section hidden">
+    <h3>Sign in to save pages</h3>
+    <div class="form-group">
+      <label>Email</label>
+      <input id="login-email" type="email" placeholder="you@example.com" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="login-password" type="password" placeholder="••••••••" />
+    </div>
+    <button id="login-btn" class="login-btn">Sign In</button>
+    <div id="login-error" class="login-error hidden"></div>
   </div>
+
+  <!-- Save View -->
+  <div id="save-view" class="hidden">
+    <div id="user-info" class="user-info"></div>
+    <div class="content">
+      <div id="url-preview" class="url-preview">Loading...</div>
+      <button id="save-btn" class="save-btn">Save to Cortex</button>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
   <div class="settings">
     <label>Server URL</label>
-    <input id="server-url" type="text" placeholder="http://localhost:5000" />
+    <input id="server-url" type="text" placeholder="https://api-cortex.onrender.com" />
   </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

@@ -32,7 +32,7 @@ export default function Dashboard() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const typeFilters = ['all', 'article', 'youtube', 'tweet', 'image', 'pdf'];
+  const typeFilters = ['all', 'article', 'youtube', 'tweet', 'linkedin', 'image', 'pdf'];
 
   return (
     <div className="page-container">

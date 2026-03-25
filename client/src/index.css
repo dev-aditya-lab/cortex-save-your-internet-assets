@@ -317,6 +317,7 @@ h3 { font-size: 1rem; font-weight: 500; }
 .item-type-badge.tweet { background: #e0e7ff; color: #3730a3; }
 .item-type-badge.image { background: #dcfce7; color: #15803d; }
 .item-type-badge.pdf { background: #fef3c7; color: #92400e; }
+.item-type-badge.linkedin { background: #dbeafe; color: #1e3a5f; }
 .item-type-badge.other { background: #f1f5f9; color: #475569; }
 
 .tag {

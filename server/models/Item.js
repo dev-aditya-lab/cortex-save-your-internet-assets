@@ -11,7 +11,7 @@ const itemSchema = new mongoose.Schema({
   url: { type: String, default: '' },
   type: {
     type: String,
-    enum: ['article', 'tweet', 'youtube', 'image', 'pdf', 'other'],
+    enum: ['article', 'tweet', 'youtube', 'image', 'pdf', 'linkedin', 'other'],
     default: 'article'
   },
   title: { type: String, required: true },

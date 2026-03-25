@@ -1,4 +1,4 @@
-import { HiOutlineGlobeAlt, HiOutlineFilm, HiOutlinePhotograph, HiOutlineDocumentText, HiOutlineChatAlt2 } from 'react-icons/hi';
+import { HiOutlineGlobeAlt, HiOutlineFilm, HiOutlinePhotograph, HiOutlineDocumentText, HiOutlineChatAlt2, HiOutlineBriefcase } from 'react-icons/hi';
 
 const typeIcons = {
   article: HiOutlineGlobeAlt,
@@ -6,8 +6,10 @@ const typeIcons = {
   image: HiOutlinePhotograph,
   pdf: HiOutlineDocumentText,
   tweet: HiOutlineChatAlt2,
+  linkedin: HiOutlineBriefcase,
   other: HiOutlineGlobeAlt,
 };
+
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);

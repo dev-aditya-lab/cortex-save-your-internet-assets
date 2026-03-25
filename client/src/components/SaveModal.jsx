@@ -60,7 +60,7 @@ export default function SaveModal({ isOpen, onClose, onSaved }) {
               </div>
             </div>
             <p style={{ fontSize: '0.75rem', color: '#646b75' }}>
-              Supports articles, tweets, YouTube videos, images, and PDFs.
+              Supports articles, tweets, YouTube videos, LinkedIn posts, images, and PDFs.
               Metadata, tags, and embeddings are generated automatically.
             </p>
             {error && (

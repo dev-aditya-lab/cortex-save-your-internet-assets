@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #ffffff;
+      color: #1a1d21;
+    }
+    .header {
+      padding: 16px;
+      border-bottom: 1px solid #e2e5e9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header .logo {
+      color: #2563eb;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .header .dot {
+      color: #2563eb;
+      font-size: 18px;
+    }
+    .content {
+      padding: 16px;
+    }
+    .url-preview {
+      background: #f8f9fa;
+      border: 1px solid #e2e5e9;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: #646b75;
+      margin-bottom: 14px;
+      word-break: break-all;
+      max-height: 60px;
+      overflow: hidden;
+    }
+    .save-btn {
+      width: 100%;
+      padding: 10px;
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .save-btn:hover { background: #1d4ed8; }
+    .save-btn:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 12px;
+      text-align: center;
+      padding: 6px;
+      border-radius: 4px;
+    }
+    .status.success { background: #dcfce7; color: #15803d; }
+    .status.error { background: #fee2e2; color: #b91c1c; }
+    .settings {
+      padding: 8px 16px;
+      border-top: 1px solid #e2e5e9;
+      margin-top: 8px;
+    }
+    .settings label {
+      font-size: 11px;
+      color: #646b75;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .settings input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #e2e5e9;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #1a1d21;
+      outline: none;
+    }
+    .settings input:focus { border-color: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="dot">◆</span>
+    <span class="logo">Cortex</span>
+  </div>
+  <div class="content">
+    <div id="url-preview" class="url-preview">Loading...</div>
+    <button id="save-btn" class="save-btn">Save to Cortex</button>
+    <div id="status" class="status" style="display: none;"></div>
+  </div>
+  <div class="settings">
+    <label>Server URL</label>
+    <input id="server-url" type="text" placeholder="http://localhost:5000" />
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

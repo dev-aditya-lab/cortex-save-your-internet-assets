@@ -3,8 +3,18 @@ const router = express.Router();
 const Item = require('../models/Item');
 const { fetchMetadata } = require('../services/metadata');
 const { generateTags, generateEmbedding, findRelated } = require('../services/ai');
+const { runClustering } = require('../services/clustering');
 
-// Save a new item
+// =============================================
+// SAVE NEW ITEM - Full Intelligence Pipeline
+// =============================================
+// 1. Content Extraction (metadata)
+// 2. Metadata Parsing (title, desc, thumbnail)
+// 3. Embedding Generation (real 384-dim)
+// 4. Tag Generation (Groq LLM)
+// 5. Storage (MongoDB)
+// 6. Similarity Linking (auto-clustering)
+
 router.post('/', async (req, res) => {
   try {
     const { url, title, description, type } = req.body;
@@ -13,24 +23,32 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'URL or title is required' });
     }
 
-    // Fetch metadata if URL provided
-    let meta = { title: title || '', description: description || '', thumbnail: '', type: type || 'other', domain: '' };
+    console.log(`\n[PIPELINE] === Starting save pipeline ===`);
+
+    // Step 1 & 2: Content/Metadata extraction
+    console.log('[PIPELINE] Step 1-2: Extracting metadata...');
+    let meta = { title: title || '', description: description || '', thumbnail: '', type: type || 'other', domain: '', contentText: '' };
     if (url) {
       meta = await fetchMetadata(url);
     }
-
-    // Override with provided values
     if (title) meta.title = title;
     if (description) meta.description = description;
     if (type) meta.type = type;
+    console.log(`[PIPELINE] Extracted: "${meta.title}" (${meta.type})`);
 
-    // Generate tags and embedding in parallel
-    const textForAI = `${meta.title}. ${meta.description}`;
-    const [tags, embedding] = await Promise.all([
-      generateTags(meta.title, meta.description),
-      generateEmbedding(textForAI)
-    ]);
+    // Step 3: Generate REAL embedding
+    console.log('[PIPELINE] Step 3: Generating real embedding...');
+    const textForEmbedding = meta.contentText || `${meta.title}. ${meta.description}`;
+    const embedding = await generateEmbedding(textForEmbedding);
+    console.log(`[PIPELINE] Embedding: ${embedding.length} dimensions`);
 
+    // Step 4: Generate tags (Groq AI or fallback)
+    console.log('[PIPELINE] Step 4: Generating tags...');
+    const tags = await generateTags(meta.title, meta.description, meta.contentText);
+    console.log(`[PIPELINE] Tags: [${tags.join(', ')}]`);
+
+    // Step 5: Store in MongoDB
+    console.log('[PIPELINE] Step 5: Storing...');
     const item = new Item({
       url: url || '',
       type: meta.type,
@@ -42,12 +60,25 @@ router.post('/', async (req, res) => {
       domain: meta.domain,
       collectionId: req.body.collectionId || null
     });
-
     await item.save();
-    res.status(201).json(item);
+    console.log(`[PIPELINE] Stored: ${item._id}`);
+
+    // Step 6: Similarity linking (auto-clustering)
+    console.log('[PIPELINE] Step 6: Running auto-clustering...');
+    const clusterResult = await runClustering();
+    console.log(`[PIPELINE] Clusters found: ${clusterResult.clusters?.length || 0}`);
+    console.log('[PIPELINE] === Pipeline complete ===\n');
+
+    // Return item without embedding (too large for response)
+    const response = item.toObject();
+    delete response.embedding;
+    response.embeddingDimensions = embedding.length;
+    response.pipelineSteps = ['content_extraction', 'metadata_parsing', 'embedding_generation', 'tag_generation', 'storage', 'similarity_linking'];
+
+    res.status(201).json(response);
   } catch (err) {
-    console.error('Error saving item:', err);
-    res.status(500).json({ error: 'Failed to save item' });
+    console.error('[PIPELINE] Error:', err);
+    res.status(500).json({ error: 'Failed to save item: ' + err.message });
   }
 });
 
@@ -71,12 +102,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single item
+// Get single item (include embedding dimensions in response)
 router.get('/:id', async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
-    res.json(item);
+
+    const response = item.toObject();
+    response.embeddingDimensions = item.embedding?.length || 0;
+    response.hasEmbedding = item.embedding?.length > 0;
+    delete response.embedding;
+    res.json(response);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch item' });
   }
@@ -92,18 +128,22 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Get related items
+// Get related items (real embedding-based search)
 router.get('/:id/related', async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
+
+    if (!item.embedding || item.embedding.length === 0) {
+      return res.json([]);
+    }
 
     const allItems = await Item.find({ _id: { $ne: item._id } });
     const related = findRelated(item.embedding, allItems, 5, item._id);
 
     res.json(related.map(r => ({
       ...r.item.toObject(),
-      similarity: Math.round(r.score * 100),
+      similarity: Math.round(r.score * 10000) / 100, // real score, 2 decimal places
       embedding: undefined
     })));
   } catch (err) {
@@ -123,7 +163,9 @@ router.post('/:id/highlights', async (req, res) => {
     item.highlights.push({ text, note: note || '', color: color || '#3B82F6' });
     await item.save();
 
-    res.status(201).json(item);
+    const response = item.toObject();
+    delete response.embedding;
+    res.status(201).json(response);
   } catch (err) {
     res.status(500).json({ error: 'Failed to add highlight' });
   }
@@ -138,13 +180,15 @@ router.delete('/:id/highlights/:highlightId', async (req, res) => {
     item.highlights = item.highlights.filter(h => String(h._id) !== req.params.highlightId);
     await item.save();
 
-    res.json(item);
+    const response = item.toObject();
+    delete response.embedding;
+    res.json(response);
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete highlight' });
   }
 });
 
-// Update item (move to collection, update tags, etc.)
+// Update item
 router.patch('/:id', async (req, res) => {
   try {
     const updates = {};

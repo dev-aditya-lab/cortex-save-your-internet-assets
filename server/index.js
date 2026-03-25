@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const { preloadModel } = require('./services/ai');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +19,7 @@ app.use('/api/collections', require('./routes/collections'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/resurface', require('./routes/resurface'));
 app.use('/api/graph', require('./routes/graph'));
+app.use('/api/debug', require('./routes/debug'));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -28,6 +30,11 @@ app.get('/api/health', (req, res) => {
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
+
+    // Preload the embedding model in background
+    console.log('Preloading embedding model...');
+    preloadModel();
+
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });

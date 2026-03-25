@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Search from './pages/Search';
 import Collections from './pages/Collections';
 import Graph from './pages/Graph';
+import Debug from './pages/Debug';
 import './index.css';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/graph" element={<Graph />} />
+          <Route path="/debug" element={<Debug />} />
         </Routes>
       </Layout>
     </BrowserRouter>

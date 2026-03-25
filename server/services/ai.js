@@ -2,10 +2,108 @@ const Groq = require('groq-sdk');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Generate tags from content using Groq LLM
-async function generateTags(title, description) {
+// =============================================
+// REAL EMBEDDING SYSTEM using transformers.js
+// Model: all-MiniLM-L6-v2 (384 dimensions)
+// =============================================
+
+let embeddingPipeline = null;
+
+async function getEmbeddingPipeline() {
+  if (!embeddingPipeline) {
+    const { pipeline } = await import('@xenova/transformers');
+    console.log('[AI] Loading embedding model (all-MiniLM-L6-v2)...');
+    embeddingPipeline = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+    console.log('[AI] Embedding model loaded successfully');
+  }
+  return embeddingPipeline;
+}
+
+// Generate REAL 384-dim embedding using sentence transformer
+async function generateEmbedding(text) {
   try {
-    const text = `${title}. ${description}`.substring(0, 1000);
+    const input = text.substring(0, 512).trim();
+    if (!input) return [];
+
+    const pipe = await getEmbeddingPipeline();
+    const output = await pipe(input, { pooling: 'mean', normalize: true });
+
+    // Convert to plain array
+    const embedding = Array.from(output.data);
+    console.log(`[AI] Generated real embedding: ${embedding.length} dimensions, sample: [${embedding.slice(0, 5).map(v => v.toFixed(4)).join(', ')}...]`);
+    return embedding;
+  } catch (err) {
+    console.error('[AI] Embedding generation failed:', err.message);
+    return [];
+  }
+}
+
+// =============================================
+// COSINE SIMILARITY (real math)
+// =============================================
+
+function cosineSimilarity(a, b) {
+  if (!a || !b || a.length !== b.length || a.length === 0) return 0;
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(magA) * Math.sqrt(magB);
+  return denom === 0 ? 0 : dot / denom;
+}
+
+// =============================================
+// NEAREST NEIGHBOR SEARCH
+// =============================================
+
+function findRelated(targetEmbedding, items, topK = 5, excludeId = null) {
+  if (!targetEmbedding || targetEmbedding.length === 0) return [];
+
+  const scored = items
+    .filter(item => {
+      if (!item.embedding || item.embedding.length === 0) return false;
+      if (excludeId && String(item._id) === String(excludeId)) return false;
+      return true;
+    })
+    .map(item => ({
+      item,
+      score: cosineSimilarity(targetEmbedding, item.embedding)
+    }))
+    .filter(s => s.score > 0.15) // real threshold for MiniLM embeddings
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+
+  return scored;
+}
+
+// Full similarity matrix for debug
+function computeSimilarityMatrix(items) {
+  const matrix = [];
+  for (let i = 0; i < items.length; i++) {
+    const row = [];
+    for (let j = 0; j < items.length; j++) {
+      if (i === j) {
+        row.push(1.0);
+      } else if (items[i].embedding?.length && items[j].embedding?.length) {
+        row.push(cosineSimilarity(items[i].embedding, items[j].embedding));
+      } else {
+        row.push(0);
+      }
+    }
+    matrix.push(row);
+  }
+  return matrix;
+}
+
+// =============================================
+// AI TAGGING (Groq LLM - this is real)
+// =============================================
+
+async function generateTags(title, description, contentText) {
+  try {
+    const text = `${title}. ${description}. ${contentText || ''}`.substring(0, 1500);
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
@@ -15,7 +113,7 @@ async function generateTags(title, description) {
         },
         {
           role: 'user',
-          content: `Generate tags for this content:\nTitle: ${title}\nDescription: ${description}`
+          content: `Generate tags for this content:\nTitle: ${title}\nDescription: ${description}\nContent: ${(contentText || '').substring(0, 500)}`
         }
       ],
       temperature: 0.3,
@@ -29,12 +127,12 @@ async function generateTags(title, description) {
     }
     return fallbackTags(title, description);
   } catch (err) {
-    console.error('AI tagging failed, using fallback:', err.message);
+    console.error('[AI] Groq tagging failed, using fallback:', err.message);
     return fallbackTags(title, description);
   }
 }
 
-// Fallback: simple keyword extraction
+// Fallback: real keyword extraction using TF frequency
 function fallbackTags(title, description) {
   const stopWords = new Set([
     'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -63,93 +161,18 @@ function fallbackTags(title, description) {
     .map(([word]) => word);
 }
 
-// Generate embedding using Groq
-async function generateEmbedding(text) {
-  try {
-    const input = text.substring(0, 500);
-    const response = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an embedding generator. Given text, return a JSON array of exactly 64 floating point numbers between -1 and 1 that represent the semantic meaning of the text. Only return the JSON array, nothing else.'
-        },
-        {
-          role: 'user',
-          content: input
-        }
-      ],
-      temperature: 0,
-      max_tokens: 800
-    });
-
-    const content = response.choices[0]?.message?.content?.trim();
-    const embedding = JSON.parse(content);
-    if (Array.isArray(embedding) && embedding.length === 64) {
-      return embedding.map(Number);
-    }
-    return simpleEmbedding(input);
-  } catch (err) {
-    console.error('AI embedding failed, using fallback:', err.message);
-    return simpleEmbedding(text);
-  }
-}
-
-// Fallback: simple hash-based embedding
-function simpleEmbedding(text) {
-  const dim = 64;
-  const embedding = new Array(dim).fill(0);
-  const words = text.toLowerCase().split(/\s+/);
-
-  words.forEach((word, i) => {
-    for (let j = 0; j < word.length; j++) {
-      const idx = (word.charCodeAt(j) * (i + 1) * (j + 1)) % dim;
-      embedding[idx] += 1 / words.length;
-    }
+// Preload the model at startup
+function preloadModel() {
+  getEmbeddingPipeline().catch(err => {
+    console.error('[AI] Failed to preload model:', err.message);
   });
-
-  // Normalize
-  const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-  if (magnitude > 0) {
-    for (let i = 0; i < dim; i++) embedding[i] /= magnitude;
-  }
-
-  return embedding;
-}
-
-// Cosine similarity between two vectors
-function cosineSimilarity(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
-  let dot = 0, magA = 0, magB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
-  }
-  const denom = Math.sqrt(magA) * Math.sqrt(magB);
-  return denom === 0 ? 0 : dot / denom;
-}
-
-// Find related items using cosine similarity
-function findRelated(targetEmbedding, items, topK = 5, excludeId = null) {
-  if (!targetEmbedding || targetEmbedding.length === 0) return [];
-
-  const scored = items
-    .filter(item => item.embedding && item.embedding.length > 0 && String(item._id) !== String(excludeId))
-    .map(item => ({
-      item,
-      score: cosineSimilarity(targetEmbedding, item.embedding)
-    }))
-    .filter(s => s.score > 0.3)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
-
-  return scored;
 }
 
 module.exports = {
-  generateTags,
   generateEmbedding,
   cosineSimilarity,
-  findRelated
+  findRelated,
+  computeSimilarityMatrix,
+  generateTags,
+  preloadModel
 };

@@ -1,219 +1,170 @@
 import { useState, useEffect } from 'react';
-import { HiOutlineX, HiOutlineExternalLink, HiOutlineTrash, HiOutlinePlus } from 'react-icons/hi';
-import { getItem, getRelatedItems, addHighlight, deleteHighlight, deleteItem, getCollections, updateItem } from '../api';
+import { getItem, getRelatedItems, deleteItem, addHighlight, deleteHighlight } from '../api';
+import { HiOutlineExternalLink, HiOutlineTrash, HiX } from 'react-icons/hi';
 
-export default function ItemDetail({ itemId, onClose, onDeleted }) {
-  const [item, setItem] = useState(null);
+export default function ItemDetail({ item, onClose, onDeleted }) {
+  const [full, setFull] = useState(null);
   const [related, setRelated] = useState([]);
-  const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [highlightText, setHighlightText] = useState('');
   const [highlightNote, setHighlightNote] = useState('');
-  const [showHighlightForm, setShowHighlightForm] = useState(false);
 
   useEffect(() => {
-    if (!itemId) return;
-    setLoading(true);
-    Promise.all([
-      getItem(itemId),
-      getRelatedItems(itemId).catch(() => []),
-      getCollections().catch(() => [])
-    ]).then(([itemData, relatedData, colData]) => {
-      setItem(itemData);
-      setRelated(relatedData);
-      setCollections(colData);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [itemData, relatedData] = await Promise.all([
+          getItem(item._id),
+          getRelatedItems(item._id).catch(() => [])
+        ]);
+        setFull(itemData);
+        setRelated(relatedData);
+      } catch { }
       setLoading(false);
-    });
-  }, [itemId]);
+    };
+    load();
+  }, [item._id]);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this item?')) return;
+    try {
+      await deleteItem(item._id);
+      onDeleted?.();
+    } catch { }
+  };
 
   const handleAddHighlight = async () => {
     if (!highlightText.trim()) return;
-    const updated = await addHighlight(itemId, { text: highlightText, note: highlightNote });
-    setItem(updated);
-    setHighlightText('');
-    setHighlightNote('');
-    setShowHighlightForm(false);
+    try {
+      const updated = await addHighlight(item._id, { text: highlightText, note: highlightNote });
+      setFull(updated);
+      setHighlightText('');
+      setHighlightNote('');
+    } catch { }
   };
 
   const handleDeleteHighlight = async (hId) => {
-    const updated = await deleteHighlight(itemId, hId);
-    setItem(updated);
-  };
-
-  const handleDelete = async () => {
-    const confirmed = window.confirm('Are you sure you want to delete this item?');
-    if (!confirmed) return;
     try {
-      await deleteItem(itemId);
-      onDeleted?.();
-      onClose();
-    } catch (err) {
-      console.error('Delete failed:', err);
-      alert('Failed to delete item. Please try again.');
-    }
+      const updated = await deleteHighlight(item._id, hId);
+      setFull(updated);
+    } catch { }
   };
 
-  const handleMoveToCollection = async (colId) => {
-    await updateItem(itemId, { collectionId: colId || null });
-    const updated = await getItem(itemId);
-    setItem(updated);
-  };
-
-  if (!itemId) return null;
+  const data = full || item;
+  const date = new Date(data.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
   return (
     <>
-      <div className="detail-overlay" onClick={onClose} />
+      <div className="detail-overlay" onClick={onClose}></div>
       <div className="detail-panel">
         <div className="detail-header">
-          <h2 style={{ fontSize: '0.9375rem' }}>Details</h2>
+          <span className={`type-badge ${data.type}`}>{data.type}</span>
           <div style={{ display: 'flex', gap: 4 }}>
-            <button className="btn btn-ghost btn-sm" onClick={handleDelete} title="Delete">
-              <HiOutlineTrash size={16} />
+            {data.url && (
+              <a href={data.url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                <HiOutlineExternalLink size={14} />
+              </a>
+            )}
+            <button className="btn btn-ghost btn-sm" onClick={handleDelete} style={{ color: '#e5484d' }}>
+              <HiOutlineTrash size={14} />
             </button>
             <button className="btn btn-ghost btn-sm" onClick={onClose}>
-              <HiOutlineX size={18} />
+              <HiX size={14} />
             </button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="loading-center"><div className="spinner"></div></div>
-        ) : item ? (
-          <div className="detail-body">
-            {/* Thumbnail */}
-            {item.thumbnail && (
-              <img
-                src={item.thumbnail}
-                alt=""
-                style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 6, marginBottom: 16 }}
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
-            )}
-
-            {/* Title & URL */}
-            <h3 style={{ marginBottom: 8 }}>{item.title}</h3>
-            {item.url && (
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: '0.8125rem', color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12, textDecoration: 'none' }}
-              >
-                {item.domain || 'Open link'} <HiOutlineExternalLink size={14} />
-              </a>
-            )}
-
-            {/* Description */}
-            {item.description && (
-              <p style={{ fontSize: '0.8125rem', color: '#646b75', marginBottom: 16, lineHeight: 1.6 }}>
-                {item.description}
+        <div className="detail-body">
+          {loading ? (
+            <div className="loading-center"><div className="spinner"></div></div>
+          ) : (
+            <>
+              {/* Title & Meta */}
+              <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 6, lineHeight: 1.4 }}>
+                {data.title}
+              </h2>
+              <p style={{ fontSize: '0.75rem', color: '#8b919e', marginBottom: 16 }}>
+                {data.domain && <>{data.domain} · </>}{date}
               </p>
-            )}
 
-            {/* Type & Date */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-              <span className={`item-type-badge ${item.type}`}>{item.type}</span>
-              <span style={{ fontSize: '0.75rem', color: '#646b75' }}>
-                {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </span>
-            </div>
+              {/* Thumbnail */}
+              {data.thumbnail && (
+                <img
+                  src={data.thumbnail} alt=""
+                  style={{ width: '100%', borderRadius: 6, marginBottom: 16, border: '1px solid #e0e2e7' }}
+                  onError={e => { e.target.style.display = 'none'; }}
+                />
+              )}
 
-            {/* Tags */}
-            {item.tags?.length > 0 && (
-              <div className="detail-section">
-                <div className="detail-section-title">Tags</div>
-                <div className="tags-row">
-                  {item.tags.map(tag => (
-                    <span key={tag} className="tag">{tag}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Collection */}
-            <div className="detail-section">
-              <div className="detail-section-title">Collection</div>
-              <select
-                className="input"
-                value={item.collectionId || ''}
-                onChange={(e) => handleMoveToCollection(e.target.value)}
-              >
-                <option value="">No collection</option>
-                {collections.map(col => (
-                  <option key={col._id} value={col._id}>{col.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Highlights */}
-            <div className="detail-section">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div className="detail-section-title" style={{ margin: 0 }}>Highlights & Notes</div>
-                <button className="btn btn-ghost btn-sm" onClick={() => setShowHighlightForm(!showHighlightForm)}>
-                  <HiOutlinePlus size={14} /> Add
-                </button>
-              </div>
-
-              {showHighlightForm && (
-                <div style={{ marginBottom: 12, padding: 12, background: '#f8f9fa', borderRadius: 6 }}>
-                  <input
-                    className="input"
-                    placeholder="Highlight text..."
-                    value={highlightText}
-                    onChange={e => setHighlightText(e.target.value)}
-                    style={{ marginBottom: 8 }}
-                  />
-                  <input
-                    className="input"
-                    placeholder="Note (optional)"
-                    value={highlightNote}
-                    onChange={e => setHighlightNote(e.target.value)}
-                    style={{ marginBottom: 8 }}
-                  />
-                  <button className="btn btn-primary btn-sm" onClick={handleAddHighlight}>Save</button>
+              {/* Description */}
+              {data.description && (
+                <div className="detail-section">
+                  <p style={{ fontSize: '0.8125rem', color: '#555a65', lineHeight: 1.6 }}>
+                    {data.description}
+                  </p>
                 </div>
               )}
 
-              {item.highlights?.length > 0 ? (
-                item.highlights.map(h => (
+              {/* Tags */}
+              {data.tags?.length > 0 && (
+                <div className="detail-section">
+                  <div className="detail-section-title">Tags</div>
+                  <div className="tags-row">
+                    {data.tags.map(tag => <span key={tag} className="tag">{tag}</span>)}
+                  </div>
+                </div>
+              )}
+
+              {/* Embedding Info */}
+              {data.hasEmbedding && (
+                <div className="detail-section">
+                  <div className="detail-section-title">Intelligence</div>
+                  <p style={{ fontSize: '0.75rem', color: '#8b919e' }}>
+                    Embedding: {data.embeddingDimensions}-dim vector · Model: all-MiniLM-L6-v2
+                  </p>
+                </div>
+              )}
+
+              {/* Highlights */}
+              <div className="detail-section">
+                <div className="detail-section-title">Highlights</div>
+                {data.highlights?.map(h => (
                   <div key={h._id} className="highlight-item">
                     <div className="highlight-text">"{h.text}"</div>
                     {h.note && <div className="highlight-note">{h.note}</div>}
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      style={{ marginTop: 4, fontSize: '0.6875rem', color: '#dc2626' }}
-                      onClick={() => handleDeleteHighlight(h._id)}
-                    >
+                    <button className="btn btn-ghost btn-sm" onClick={() => handleDeleteHighlight(h._id)} style={{ marginTop: 4, fontSize: '0.6875rem', color: '#e5484d' }}>
                       Remove
                     </button>
                   </div>
-                ))
-              ) : (
-                <p style={{ fontSize: '0.8125rem', color: '#646b75' }}>No highlights yet</p>
-              )}
-            </div>
-
-            {/* Related Items */}
-            {related.length > 0 && (
-              <div className="detail-section">
-                <div className="detail-section-title">Related Items</div>
-                {related.map(r => (
-                  <div
-                    key={r._id}
-                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #e2e5e9', marginBottom: 6, cursor: 'default' }}
-                  >
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 500, marginBottom: 2 }}>{r.title}</div>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <span className={`item-type-badge ${r.type}`}>{r.type}</span>
-                      <span className="similarity-badge">{r.similarity}% match</span>
-                    </div>
-                  </div>
                 ))}
+                <div style={{ marginTop: 8 }}>
+                  <input className="input" placeholder="Add a highlight..." value={highlightText} onChange={e => setHighlightText(e.target.value)} style={{ marginBottom: 6 }} />
+                  {highlightText && (
+                    <>
+                      <input className="input" placeholder="Note (optional)" value={highlightNote} onChange={e => setHighlightNote(e.target.value)} style={{ marginBottom: 6 }} />
+                      <button className="btn btn-secondary btn-sm" onClick={handleAddHighlight}>Add Highlight</button>
+                    </>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        ) : null}
+
+              {/* Related Items */}
+              {related.length > 0 && (
+                <div className="detail-section">
+                  <div className="detail-section-title">Related</div>
+                  {related.map(r => (
+                    <div key={r._id} style={{ padding: '8px 0', borderBottom: '1px solid #f0f1f3', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.8125rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.title}
+                      </span>
+                      <span className="similarity-badge">{r.similarity}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </>
   );

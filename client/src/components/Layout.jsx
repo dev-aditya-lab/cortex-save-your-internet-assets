@@ -1,55 +1,100 @@
-import { NavLink } from 'react-router-dom';
-import { HiOutlineHome, HiOutlineSearch, HiOutlineFolder, HiOutlineShare, HiOutlineChip, HiOutlineLogout } from 'react-icons/hi';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { HiOutlineSearch, HiOutlineFolder, HiOutlineShare, HiPlus } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
+import CommandPalette from './CommandPalette';
 
-export default function Layout({ children }) {
+export default function Layout({ children, onSaveClick }) {
   const { user, logout } = useAuth();
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Ctrl+K to open command palette
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen(prev => !prev);
+      }
+      if (e.key === 'Escape') setProfileOpen(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handler = () => setProfileOpen(false);
+    setTimeout(() => document.addEventListener('click', handler), 0);
+    return () => document.removeEventListener('click', handler);
+  }, [profileOpen]);
+
+  const isActive = (path) => location.pathname === path;
+  const initials = (user?.name || 'U').charAt(0).toUpperCase();
 
   return (
-    <div className="app-layout">
-      <aside className="sidebar">
-        <div className="sidebar-logo">
+    <>
+      <nav className="topnav">
+        <div className="topnav-logo" onClick={() => navigate('/')}>
           <span>◆</span> Cortex
         </div>
-        <nav className="sidebar-nav">
-          <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <HiOutlineHome /> Dashboard
-          </NavLink>
-          <NavLink to="/search" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <HiOutlineSearch /> Search
-          </NavLink>
-          <NavLink to="/collections" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <HiOutlineFolder /> Collections
-          </NavLink>
-          <NavLink to="/graph" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <HiOutlineShare /> Knowledge Graph
-          </NavLink>
-          {/* <div style={{ borderTop: '1px solid #e2e5e9', margin: '8px 0' }}></div>
-          <NavLink to="/debug" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <HiOutlineChip /> Debug Mode
-          </NavLink> */}
-        </nav>
 
-        {/* User info + Logout */}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #e2e5e9' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 500, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.name || 'User'}
-          </div>
-          <div style={{ fontSize: '0.6875rem', color: '#646b75', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.email}
-          </div>
-          <button
-            onClick={logout}
-            className="btn btn-ghost btn-sm"
-            style={{ width: '100%', justifyContent: 'center', color: '#dc2626', fontSize: '0.8125rem' }}
-          >
-            <HiOutlineLogout size={14} /> Sign Out
+        <div className="topnav-search">
+          <button className="topnav-search-trigger" onClick={() => setCmdOpen(true)}>
+            <HiOutlineSearch size={15} />
+            Search your knowledge...
+            <kbd>⌘K</kbd>
           </button>
         </div>
-      </aside>
+
+        <div className="topnav-actions">
+          <button
+            className={`topnav-btn ${isActive('/collections') ? 'active' : ''}`}
+            onClick={() => navigate('/collections')}
+          >
+            <HiOutlineFolder /> <span>Collections</span>
+          </button>
+          <button
+            className={`topnav-btn ${isActive('/graph') ? 'active' : ''}`}
+            onClick={() => navigate('/graph')}
+          >
+            <HiOutlineShare /> <span>Graph</span>
+          </button>
+          <button className="topnav-save-btn" onClick={onSaveClick}>
+            <HiPlus size={14} /> Save
+          </button>
+          <div
+            className="topnav-avatar"
+            onClick={(e) => { e.stopPropagation(); setProfileOpen(!profileOpen); }}
+          >
+            {initials}
+          </div>
+        </div>
+
+        {profileOpen && (
+          <div className="profile-dropdown" onClick={e => e.stopPropagation()}>
+            <div className="profile-dropdown-email">
+              <strong style={{ color: '#111318', display: 'block', marginBottom: 2 }}>{user?.name}</strong>
+              {user?.email}
+            </div>
+            <button className="profile-dropdown-item" onClick={() => { setProfileOpen(false); navigate('/debug'); }}>
+              Debug Mode
+            </button>
+            <button className="profile-dropdown-item danger" onClick={() => { setProfileOpen(false); logout(); }}>
+              Sign Out
+            </button>
+          </div>
+        )}
+      </nav>
+
       <main className="main-content">
         {children}
       </main>
-    </div>
+
+      <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} />
+    </>
   );
 }

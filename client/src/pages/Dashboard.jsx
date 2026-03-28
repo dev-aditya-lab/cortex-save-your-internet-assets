@@ -1,71 +1,89 @@
-import { useState, useEffect, useCallback } from 'react';
-import { HiOutlinePlus, HiOutlineRefresh } from 'react-icons/hi';
-import { getItems, getResurfaced } from '../api';
-import ItemCard from '../components/ItemCard';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { getItems, getResurfaced, saveItem } from '../api';
+import ItemCard, { SkeletonCard } from '../components/ItemCard';
 import ItemDetail from '../components/ItemDetail';
-import SaveModal from '../components/SaveModal';
+import { HiOutlineLightningBolt } from 'react-icons/hi';
+
+const typeFilters = ['all', 'article', 'youtube', 'tweet', 'linkedin', 'image', 'pdf'];
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
   const [resurfaced, setResurfaced] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showSave, setShowSave] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
-  const [filter, setFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [captureUrl, setCaptureUrl] = useState('');
+  const [capturing, setCapturing] = useState(false);
+  const [searchParams] = useSearchParams();
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (filter !== 'all') params.type = filter;
+      const params = activeFilter !== 'all' ? { type: activeFilter } : {};
       const [itemsData, resurfacedData] = await Promise.all([
         getItems(params),
         getResurfaced().catch(() => [])
       ]);
       setItems(itemsData);
       setResurfaced(resurfacedData);
-    } catch (err) {
-      console.error('Failed to load data:', err);
-    }
+    } catch { }
     setLoading(false);
-  }, [filter]);
+  };
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadData(); }, [activeFilter]);
 
-  const typeFilters = ['all', 'article', 'youtube', 'tweet', 'linkedin', 'image', 'pdf'];
+  // Open item from URL param (from command palette)
+  useEffect(() => {
+    const itemId = searchParams.get('item');
+    if (itemId && items.length > 0) {
+      const found = items.find(i => i._id === itemId);
+      if (found) setSelectedItem(found);
+    }
+  }, [searchParams, items]);
+
+  const handleQuickCapture = async () => {
+    const trimmed = captureUrl.trim();
+    if (!trimmed || capturing) return;
+    setCapturing(true);
+    try {
+      await saveItem({ url: trimmed });
+      setCaptureUrl('');
+      loadData();
+    } catch { }
+    setCapturing(false);
+  };
 
   return (
     <div className="page-container">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1>Dashboard</h1>
-          <p style={{ fontSize: '0.8125rem', color: '#646b75', marginTop: 4 }}>
-            {items.length} saved item{items.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setShowSave(true)}>
-          <HiOutlinePlus size={16} /> Save New
-        </button>
+      {/* Quick Capture */}
+      <div className="quick-capture">
+        <HiOutlineLightningBolt size={16} style={{ color: '#8b919e', flexShrink: 0 }} />
+        <input
+          placeholder="Paste a link to save instantly..."
+          value={captureUrl}
+          onChange={e => setCaptureUrl(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleQuickCapture()}
+        />
+        {captureUrl.trim() && (
+          <button className="quick-capture-btn" onClick={handleQuickCapture} disabled={capturing}>
+            {capturing ? 'Saving...' : 'Save'}
+          </button>
+        )}
       </div>
 
-      {/* Memory Resurfacing */}
-      {resurfaced.length > 0 && (
-        <div className="resurface-bar">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div className="resurface-title">📌 From your memory</div>
-            <button className="btn btn-ghost btn-sm" onClick={loadData}><HiOutlineRefresh size={14} /></button>
+      {/* Resurfaced Items */}
+      {!loading && resurfaced.length > 0 && (
+        <div className="resurface-section">
+          <div className="section-label">
+            <span>✦</span> From your memory
           </div>
-          <div className="resurface-items">
+          <div className="resurface-scroll">
             {resurfaced.map(item => (
-              <div
-                key={item._id}
-                className="resurface-card"
-                onClick={() => setSelectedId(item._id)}
-              >
+              <div key={item._id} className="resurface-card" onClick={() => setSelectedItem(item)}>
                 <div className="resurface-card-title">{item.title}</div>
-                <div className="resurface-card-days">
-                  {item.daysAgo === 0 ? 'Saved today' : `Saved ${item.daysAgo} day${item.daysAgo !== 1 ? 's' : ''} ago`}
+                <div className="resurface-card-label">
+                  {item.resurfaceReason || `Saved ${item.daysAgo}d ago`}
                 </div>
               </div>
             ))}
@@ -73,44 +91,49 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Type Filters */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-        {typeFilters.map(t => (
+      {/* Filter Pills */}
+      <div className="filter-row">
+        {typeFilters.map(f => (
           <button
-            key={t}
-            className={`btn btn-sm ${filter === t ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setFilter(t)}
-            style={{ textTransform: 'capitalize' }}
+            key={f}
+            className={`filter-pill ${activeFilter === f ? 'active' : ''}`}
+            onClick={() => setActiveFilter(f)}
           >
-            {t}
+            {f.charAt(0).toUpperCase() + f.slice(1)}
           </button>
         ))}
+        {!loading && (
+          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#8b919e' }}>
+            {items.length} item{items.length !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
       {/* Items Grid */}
       {loading ? (
-        <div className="loading-center"><div className="spinner"></div></div>
+        <div className="items-grid">
+          {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       ) : items.length === 0 ? (
         <div className="empty-state">
-          <p>No saved items yet. Click "Save New" to get started.</p>
+          <div className="empty-state-icon">📚</div>
+          <p>No saved items yet</p>
+          <p className="hint">Paste a link above or press the Save button to get started</p>
         </div>
       ) : (
         <div className="items-grid">
           {items.map(item => (
-            <ItemCard key={item._id} item={item} onClick={() => setSelectedId(item._id)} />
+            <ItemCard key={item._id} item={item} onClick={setSelectedItem} />
           ))}
         </div>
       )}
 
-      {/* Save Modal */}
-      <SaveModal isOpen={showSave} onClose={() => setShowSave(false)} onSaved={loadData} />
-
       {/* Detail Panel */}
-      {selectedId && (
+      {selectedItem && (
         <ItemDetail
-          itemId={selectedId}
-          onClose={() => setSelectedId(null)}
-          onDeleted={loadData}
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onDeleted={() => { setSelectedItem(null); loadData(); }}
         />
       )}
     </div>

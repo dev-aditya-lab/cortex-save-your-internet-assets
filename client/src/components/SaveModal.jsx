@@ -1,81 +1,74 @@
-import { useState } from 'react';
-import { HiOutlineX, HiOutlineLink } from 'react-icons/hi';
+import { useState, useRef, useEffect } from 'react';
 import { saveItem } from '../api';
 
 export default function SaveModal({ isOpen, onClose, onSaved }) {
   const [url, setUrl] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const inputRef = useRef(null);
 
-  if (!isOpen) return null;
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!url.trim()) {
-      setError('Please enter a URL');
-      return;
+  useEffect(() => {
+    if (isOpen) {
+      setUrl('');
+      setError('');
+      setSaving(false);
+      setTimeout(() => inputRef.current?.focus(), 80);
     }
+  }, [isOpen]);
 
-    setLoading(true);
+  const handleSave = async () => {
+    const trimmed = url.trim();
+    if (!trimmed) { setError('Please enter a URL'); return; }
+    setSaving(true);
     setError('');
     try {
-      const item = await saveItem({ url: url.trim() });
-      setUrl('');
+      const item = await saveItem({ url: trimmed });
       onSaved?.(item);
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to save. Try again.');
-    } finally {
-      setLoading(false);
+      setError(err.response?.data?.error || err.message || 'Failed to save');
     }
+    setSaving(false);
   };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !saving) handleSave();
+    if (e.key === 'Escape') onClose();
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Save Content</h2>
-          <button className="btn-ghost" onClick={onClose}>
-            <HiOutlineX size={20} />
+          <h3>Save to Cortex</h3>
+          <button className="btn-ghost" onClick={onClose} style={{ fontSize: '1rem' }}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="form-group">
+            <label className="form-label">URL</label>
+            <input
+              ref={inputRef}
+              className="input"
+              placeholder="Paste a link — article, video, tweet, image..."
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+          {error && <p style={{ fontSize: '0.75rem', color: '#e5484d', marginBottom: 8 }}>{error}</p>}
+          <p style={{ fontSize: '0.6875rem', color: '#8b919e' }}>
+            Supports articles, YouTube, tweets, LinkedIn posts, images, and PDFs.
+            Metadata, tags, and embeddings are generated automatically.
+          </p>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? <><div className="spinner" style={{ width: 12, height: 12 }}></div> Saving...</> : 'Save'}
           </button>
         </div>
-        <form onSubmit={handleSave}>
-          <div className="modal-body">
-            <div className="form-group">
-              <label className="form-label">URL</label>
-              <div style={{ position: 'relative' }}>
-                <HiOutlineLink
-                  size={16}
-                  style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#646b75' }}
-                />
-                <input
-                  className="input"
-                  style={{ paddingLeft: 36 }}
-                  type="url"
-                  placeholder="Paste article, tweet, YouTube, or image URL..."
-                  value={url}
-                  onChange={e => setUrl(e.target.value)}
-                  autoFocus
-                />
-              </div>
-            </div>
-            <p style={{ fontSize: '0.75rem', color: '#646b75' }}>
-              Supports articles, tweets, YouTube videos, LinkedIn posts, images, and PDFs.
-              Metadata, tags, and embeddings are generated automatically.
-            </p>
-            {error && (
-              <p style={{ fontSize: '0.8125rem', color: '#dc2626', marginTop: 8 }}>{error}</p>
-            )}
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? (
-                <><div className="spinner" style={{ width: 14, height: 14 }}></div> Saving...</>
-              ) : 'Save'}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

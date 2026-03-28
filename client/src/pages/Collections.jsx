@@ -1,174 +1,125 @@
-import { useState, useEffect, useCallback } from 'react';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineArrowLeft } from 'react-icons/hi';
+import { useState, useEffect } from 'react';
 import { getCollections, createCollection, deleteCollection, getCollection } from '../api';
 import ItemCard from '../components/ItemCard';
 import ItemDetail from '../components/ItemDetail';
+import { HiPlus, HiOutlineTrash } from 'react-icons/hi';
 
 export default function Collections() {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCol, setSelectedCol] = useState(null);
+  const [colItems, setColItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [activeCollection, setActiveCollection] = useState(null);
-  const [activeItems, setActiveItems] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
 
-  const colors = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2'];
-
-  const loadCollections = useCallback(async () => {
+  const loadCollections = async () => {
     setLoading(true);
-    try {
-      const data = await getCollections();
-      setCollections(data);
-    } catch (err) {
-      console.error(err);
-    }
+    try { setCollections(await getCollections()); } catch { }
     setLoading(false);
-  }, []);
+  };
 
-  useEffect(() => { loadCollections(); }, [loadCollections]);
+  useEffect(() => { loadCollections(); }, []);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    await createCollection({ name: newName, description: newDesc, color });
-    setNewName('');
-    setNewDesc('');
-    setShowCreate(false);
-    loadCollections();
+    try {
+      await createCollection({ name: newName });
+      setNewName('');
+      setShowCreate(false);
+      loadCollections();
+    } catch { }
   };
 
   const handleDelete = async (id, e) => {
     e.stopPropagation();
-    const confirmed = window.confirm('Are you sure you want to delete this collection?');
-    if (!confirmed) return;
-    try {
-      await deleteCollection(id);
-      loadCollections();
-    } catch (err) {
-      console.error('Delete collection failed:', err);
-      alert('Failed to delete collection.');
-    }
+    if (!window.confirm('Delete this collection?')) return;
+    try { await deleteCollection(id); loadCollections(); } catch { }
   };
 
   const openCollection = async (col) => {
-    setActiveCollection(col);
+    setSelectedCol(col);
     try {
       const data = await getCollection(col._id);
-      setActiveItems(data.items || []);
-    } catch (err) {
-      console.error(err);
-    }
+      setColItems(data.items || []);
+    } catch { setColItems([]); }
   };
-
-  // Collection detail view
-  if (activeCollection) {
-    return (
-      <div className="page-container">
-        <div className="page-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button className="btn btn-ghost" onClick={() => setActiveCollection(null)}>
-              <HiOutlineArrowLeft size={18} />
-            </button>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="collection-color-dot" style={{ background: activeCollection.color }}></span>
-                <h1>{activeCollection.name}</h1>
-              </div>
-              {activeCollection.description && (
-                <p style={{ fontSize: '0.8125rem', color: '#646b75', marginTop: 4 }}>{activeCollection.description}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {activeItems.length === 0 ? (
-          <div className="empty-state">
-            <p>No items in this collection yet. Add items from the dashboard.</p>
-          </div>
-        ) : (
-          <div className="items-grid">
-            {activeItems.map(item => (
-              <ItemCard key={item._id} item={item} onClick={() => setSelectedId(item._id)} />
-            ))}
-          </div>
-        )}
-
-        {selectedId && (
-          <ItemDetail
-            itemId={selectedId}
-            onClose={() => setSelectedId(null)}
-            onDeleted={() => openCollection(activeCollection)}
-          />
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1>Collections</h1>
-          <p style={{ fontSize: '0.8125rem', color: '#646b75', marginTop: 4 }}>
-            Organize your saved items into groups
-          </p>
+          <h1 className="page-title">Collections</h1>
+          <p className="page-subtitle">{collections.length} collection{collections.length !== 1 ? 's' : ''}</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          <HiOutlinePlus size={16} /> New Collection
+          <HiPlus size={14} /> New
         </button>
       </div>
 
-      {/* Create Form */}
       {showCreate && (
-        <div style={{ background: '#f8f9fa', border: '1px solid #e2e5e9', borderRadius: 8, padding: 16, marginBottom: 20 }}>
-          <div className="form-group">
-            <label className="form-label">Name</label>
-            <input className="input" placeholder="Collection name" value={newName} onChange={e => setNewName(e.target.value)} autoFocus />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Description (optional)</label>
-            <input className="input" placeholder="Brief description" value={newDesc} onChange={e => setNewDesc(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-primary btn-sm" onClick={handleCreate}>Create</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => setShowCreate(false)}>Cancel</button>
-          </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <input className="input" placeholder="Collection name" value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCreate()}
+            autoFocus />
+          <button className="btn btn-primary" onClick={handleCreate}>Create</button>
+          <button className="btn btn-secondary" onClick={() => { setShowCreate(false); setNewName(''); }}>Cancel</button>
         </div>
       )}
 
-      {/* Collections Grid */}
-      {loading ? (
+      {selectedCol ? (
+        <div>
+          <button className="btn btn-ghost" onClick={() => { setSelectedCol(null); setColItems([]); }}
+            style={{ marginBottom: 16, fontSize: '0.8125rem' }}>
+            ← Back to collections
+          </button>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 16 }}>
+            <span className="collection-color-dot" style={{ background: selectedCol.color }}></span>
+            {selectedCol.name}
+          </h2>
+          {colItems.length === 0 ? (
+            <div className="empty-state"><p>No items in this collection</p></div>
+          ) : (
+            <div className="items-grid">
+              {colItems.map(item => <ItemCard key={item._id} item={item} onClick={setSelectedItem} />)}
+            </div>
+          )}
+        </div>
+      ) : loading ? (
         <div className="loading-center"><div className="spinner"></div></div>
       ) : collections.length === 0 ? (
         <div className="empty-state">
-          <p>No collections yet. Create one to organize your saved items.</p>
+          <div className="empty-state-icon">📁</div>
+          <p>No collections yet</p>
+          <p className="hint">Collections are auto-created when similar items are saved</p>
         </div>
       ) : (
         <div className="collections-grid">
           {collections.map(col => (
-            <div key={col._id} className="card collection-card" onClick={() => openCollection(col)}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span className="collection-color-dot" style={{ background: col.color }}></span>
-                  <h3>{col.name}</h3>
+            <div key={col._id} className="collection-card" onClick={() => openCollection(col)}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                    <span className="collection-color-dot" style={{ background: col.color }}></span>
+                    {col.name}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#8b919e', marginTop: 3 }}>
+                    {col.itemCount || 0} item{(col.itemCount || 0) !== 1 ? 's' : ''}
+                  </div>
                 </div>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={(e) => handleDelete(col._id, e)}
-                  style={{ color: '#dc2626' }}
-                >
-                  <HiOutlineTrash size={14} />
+                <button className="btn btn-ghost btn-sm" onClick={(e) => handleDelete(col._id, e)} style={{ color: '#e5484d' }}>
+                  <HiOutlineTrash size={13} />
                 </button>
               </div>
-              {col.description && (
-                <p style={{ fontSize: '0.75rem', color: '#646b75', marginTop: 6 }}>{col.description}</p>
-              )}
-              <div className="collection-card-count">{col.itemCount || 0} items</div>
             </div>
           ))}
         </div>
+      )}
+
+      {selectedItem && (
+        <ItemDetail item={selectedItem} onClose={() => setSelectedItem(null)}
+          onDeleted={() => { setSelectedItem(null); if (selectedCol) openCollection(selectedCol); }} />
       )}
     </div>
   );

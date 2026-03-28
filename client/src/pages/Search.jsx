@@ -1,90 +1,87 @@
-import { useState } from 'react';
-import { HiOutlineSearch } from 'react-icons/hi';
+import { useState, useEffect } from 'react';
 import { searchItems } from '../api';
-import ItemCard from '../components/ItemCard';
+import ItemCard, { SkeletonCard } from '../components/ItemCard';
 import ItemDetail from '../components/ItemDetail';
+import { HiOutlineSearch } from 'react-icons/hi';
 
 export default function Search() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  const handleSearch = async () => {
     if (!query.trim()) return;
-
     setLoading(true);
     setSearched(true);
     try {
-      const data = await searchItems(query.trim());
+      const data = await searchItems(query);
       setResults(data);
-    } catch (err) {
-      console.error('Search failed:', err);
-      setResults([]);
-    }
+    } catch { setResults([]); }
     setLoading(false);
   };
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1>Semantic Search</h1>
-          <p style={{ fontSize: '0.8125rem', color: '#646b75', marginTop: 4 }}>
-            Search by meaning, not just keywords
-          </p>
-        </div>
+      <div style={{ marginBottom: 24 }}>
+        <h1 className="page-title">Search</h1>
+        <p className="page-subtitle">Semantic search across your saved knowledge</p>
       </div>
 
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} style={{ marginBottom: 28 }}>
-        <div className="search-container">
-          <HiOutlineSearch size={18} className="search-icon" />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <HiOutlineSearch size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#8b919e' }} />
           <input
-            className="search-input"
-            placeholder="Search your saved knowledge..."
+            className="input"
+            style={{ paddingLeft: 36 }}
+            placeholder="Search by meaning, not just keywords..."
             value={query}
             onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
           />
         </div>
-      </form>
+        <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
+          {loading ? <div className="spinner" style={{ width: 12, height: 12 }}></div> : 'Search'}
+        </button>
+      </div>
 
-      {/* Results */}
       {loading ? (
-        <div className="loading-center"><div className="spinner"></div></div>
-      ) : searched && results.length === 0 ? (
-        <div className="empty-state">
-          <p>No matching results found. Try a different query.</p>
+        <div className="items-grid">
+          {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : results.length > 0 ? (
-        <>
-          <p style={{ fontSize: '0.8125rem', color: '#646b75', marginBottom: 16 }}>
-            {results.length} result{results.length !== 1 ? 's' : ''} found
-          </p>
-          <div className="items-grid">
-            {results.map(item => (
-              <div key={item._id} style={{ position: 'relative' }}>
-                <ItemCard item={item} onClick={() => setSelectedId(item._id)} />
-                {item.similarity && (
-                  <div className="similarity-badge" style={{ position: 'absolute', top: 8, right: 8 }}>
-                    {item.similarity}% match
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
+        <div className="items-grid">
+          {results.map(item => (
+            <div key={item._id} style={{ position: 'relative' }}>
+              <ItemCard item={item} onClick={setSelectedItem} />
+              {item.similarity && (
+                <span className="similarity-badge" style={{ position: 'absolute', top: 8, right: 8 }}>
+                  {item.similarity}%
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : searched ? (
+        <div className="empty-state">
+          <p>No results found for "{query}"</p>
+          <p className="hint">Try different keywords or broader terms</p>
+        </div>
       ) : (
         <div className="empty-state">
-          <HiOutlineSearch size={48} />
-          <p>Type a query and press Enter to search</p>
+          <div className="empty-state-icon">🔍</div>
+          <p>Search uses AI to find items by meaning</p>
+          <p className="hint">Try "backend tutorial" or "react components"</p>
         </div>
       )}
 
-      {selectedId && (
-        <ItemDetail itemId={selectedId} onClose={() => setSelectedId(null)} />
+      {selectedItem && (
+        <ItemDetail
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onDeleted={() => { setSelectedItem(null); handleSearch(); }}
+        />
       )}
     </div>
   );

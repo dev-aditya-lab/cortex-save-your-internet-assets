@@ -28,28 +28,28 @@ export default function Login() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa' }}>
-      <div style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 10, border: '1px solid #e2e5e9', padding: 32 }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f6f7f9' }}>
+      <div style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 10, border: '1px solid #e0e2e7', padding: 32 }}>
+
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <span style={{ color: '#2563eb' }}>◆</span> Cortex
+          <div style={{ fontSize: '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span style={{ color: '#2563eb', fontSize: '1.25rem' }}>◆</span> Cortex
           </div>
-          <p style={{ fontSize: '0.8125rem', color: '#646b75', marginTop: 6 }}>
-            Save, organize, and rediscover knowledge
+          <p style={{ fontSize: '0.75rem', color: '#8b919e', marginTop: 6 }}>
+            Your knowledge, organized
           </p>
         </div>
 
-        {/* Tab Toggle */}
-        <div style={{ display: 'flex', marginBottom: 24, borderRadius: 6, overflow: 'hidden', border: '1px solid #e2e5e9' }}>
+        <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderRadius: 6, overflow: 'hidden', border: '1px solid #e0e2e7' }}>
           <button
             onClick={() => { setIsLogin(true); setError(''); }}
-            style={{ flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem',
-              background: isLogin ? '#2563eb' : '#fff', color: isLogin ? '#fff' : '#646b75' }}
+            style={{ flex: 1, padding: '7px 0', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.8125rem',
+              background: isLogin ? '#111318' : '#fff', color: isLogin ? '#fff' : '#8b919e' }}
           >Sign In</button>
           <button
             onClick={() => { setIsLogin(false); setError(''); }}
-            style={{ flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem',
-              background: !isLogin ? '#2563eb' : '#fff', color: !isLogin ? '#fff' : '#646b75' }}
+            style={{ flex: 1, padding: '7px 0', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.8125rem',
+              background: !isLogin ? '#111318' : '#fff', color: !isLogin ? '#fff' : '#8b919e' }}
           >Sign Up</button>
         </div>
 
@@ -69,16 +69,11 @@ export default function Login() {
             <input className="input" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
           </div>
 
-          {error && (
-            <p style={{ fontSize: '0.8125rem', color: '#dc2626', marginBottom: 12 }}>{error}</p>
-          )}
+          {error && <p style={{ fontSize: '0.75rem', color: '#e5484d', marginBottom: 10 }}>{error}</p>}
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '10px 0', marginTop: 4 }} disabled={loading}>
-            {loading ? (
-              <><div className="spinner" style={{ width: 14, height: 14 }}></div> {isLogin ? 'Signing in...' : 'Creating account...'}</>
-            ) : (
-              isLogin ? 'Sign In' : 'Create Account'
-            )}
+          <button type="submit" className="btn btn-primary" disabled={loading}
+            style={{ width: '100%', justifyContent: 'center', padding: '9px 0', marginTop: 4 }}>
+            {loading ? <><div className="spinner" style={{ width: 12, height: 12 }}></div> {isLogin ? 'Signing in...' : 'Creating account...'}</> : (isLogin ? 'Sign In' : 'Create Account')}
           </button>
         </form>
       </div>

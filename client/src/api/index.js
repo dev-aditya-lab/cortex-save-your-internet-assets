@@ -59,4 +59,4 @@ export const searchItems = (query) => api.get('/search', { params: { q: query } 
 export const getResurfaced = () => api.get('/resurface').then(r => r.data);
 
 // ===== Graph =====
-export const getGraphData = () => api.get('/graph').then(r => r.data);
+export const getGraphData = (params) => api.get('/graph', { params }).then(r => r.data);

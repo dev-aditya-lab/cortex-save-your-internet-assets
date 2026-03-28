@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HiOutlineSearch, HiOutlineFolder, HiOutlineShare, HiPlus } from 'react-icons/hi';
+import { HiOutlineSearch, HiOutlineHome, HiOutlineFolder, HiOutlineShare, HiPlus } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
 import CommandPalette from './CommandPalette';
 
@@ -51,6 +51,12 @@ export default function Layout({ children, onSaveClick }) {
         </div>
 
         <div className="topnav-actions">
+          <button
+            className={`topnav-btn ${isActive('/') ? 'active' : ''}`}
+            onClick={() => navigate('/')}
+          >
+            <HiOutlineHome /> <span>Home</span>
+          </button>
           <button
             className={`topnav-btn ${isActive('/collections') ? 'active' : ''}`}
             onClick={() => navigate('/collections')}

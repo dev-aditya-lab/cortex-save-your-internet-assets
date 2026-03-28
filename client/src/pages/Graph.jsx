@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { getGraphData } from '../api';
 import ItemDetail from '../components/ItemDetail';
@@ -61,8 +61,8 @@ export default function Graph() {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Filter & compute graph data
-  const { graphData, connectedSet } = (() => {
+  // Memoize graph data — only recompute when data/filters change, NOT on hover
+  const graphData = useMemo(() => {
     let nodes = [...rawNodes];
     let edges = [...rawEdges];
 
@@ -98,18 +98,6 @@ export default function Graph() {
       });
     }
 
-    // Compute connection set for hover highlighting
-    const connected = new Set();
-    if (hoverNode) {
-      connected.add(hoverNode.id);
-      edges.forEach(e => {
-        const src = typeof e.source === 'object' ? e.source.id : e.source;
-        const tgt = typeof e.target === 'object' ? e.target.id : e.target;
-        if (src === hoverNode.id) connected.add(tgt);
-        if (tgt === hoverNode.id) connected.add(src);
-      });
-    }
-
     // Recount connections for filtered set
     const connCount = {};
     edges.forEach(e => {
@@ -127,8 +115,23 @@ export default function Graph() {
       similarity: e.similarity
     }));
 
-    return { graphData: { nodes, links }, connectedSet: connected };
-  })();
+    return { nodes, links };
+  }, [rawNodes, rawEdges, typeFilter, tagFilter, mode, focusNodeId]);
+
+  // Separate hover highlighting — changes on hover WITHOUT recreating graphData
+  const connectedSet = useMemo(() => {
+    const connected = new Set();
+    if (hoverNode) {
+      connected.add(hoverNode.id);
+      graphData.links.forEach(e => {
+        const src = typeof e.source === 'object' ? e.source.id : e.source;
+        const tgt = typeof e.target === 'object' ? e.target.id : e.target;
+        if (src === hoverNode.id) connected.add(tgt);
+        if (tgt === hoverNode.id) connected.add(src);
+      });
+    }
+    return connected;
+  }, [hoverNode, graphData.links]);
 
   const toggleType = (type) => {
     setTypeFilter(prev => {
